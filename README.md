@@ -5,8 +5,8 @@
 | | |
 |---|---|
 | Video demo (camera on) | **TODO: YouTube link** |
-| Live app (UI + API) | **TODO: deployed URL** |
-| API docs (Swagger) | `<live URL>/docs` |
+| Live app (dashboard UI) | https://football-event-recognition.onrender.com |
+| Live API docs (Swagger) | https://football-event-recognition.onrender.com/docs (ReDoc: `/redoc`, OpenAPI JSON: `/openapi.json`) |
 | Notebook | [`notebook/football_event_pipeline.ipynb`](notebook/football_event_pipeline.ipynb) |
 | Previous project (Intro to ML) | [mkalasaivan/football-ml-summative](https://github.com/mkalasaivan/football-ml-summative) |
 
@@ -140,9 +140,31 @@ locust -f locust/locustfile.py --host http://localhost:8080          # web UI at
 Download the *Soccer Events TestSet* from Kaggle, zip a few class folders (e.g. `Corner/`, `Red-Cards/`, `Tackle/`),
 and upload the zip on the *Upload & retrain* tab. Folder names from that dataset are mapped to our classes automatically.
 
+## Deployment (Render)
+
+The app is deployed as a single Docker web service on **Render** (free plan) from this repository
+([`render.yaml`](render.yaml)). The same container serves the dashboard UI (`/`), the REST API and the Swagger docs (`/docs`).
+Every push to `main` redeploys automatically.
+
+The free plan has **512 MB RAM and 0.1 CPU**, and that shapes the configuration:
+- `INFER_CONCURRENCY=1`: one TensorFlow inference at a time.
+- `FINE_TUNE_LAYERS=0`, `RETRAIN_BATCH=1`: **low-memory retraining mode**. Importing TensorFlow alone takes about 425 MB, so fine-tuning
+  the backbone doesn't fit. Instead, the saved model's frozen backbone converts each uploaded image (one at a time) into
+  a 1280-d feature vector, and the model's classifier head is retrained on those features starting from its saved weights.
+  The old and new heads are compared on the same held-out uploads, and the updated model is saved only if it is at least as good.
+  Tested in a 512 MB container: peak memory stays under the limit, and on 420 external images held-out accuracy rose **from 59.5% to 89.3%**.
+  On the live Render service, retraining on 140 uploaded images (20 per class) took about 4 minutes and raised held-out accuracy
+  from 67.9% to 92.9% (28 held-out images).
+- On the free plan, the service sleeps after 15 minutes without traffic (the first request then takes about a minute), and the disk
+  is not persistent, so uploads and retrained models reset on redeploy. Retraining is slow on 0.1 CPU, so upload around 20 images per class
+  for a demo.
+
+Locally (`docker compose`), the default is full fine-tuning of the top 40 backbone layers with batch size 32.
+The `deploy/huggingface/` folder contains an alternative Hugging Face Spaces setup (Docker Spaces now need a paid plan).
+
 ## Repository structure
 ```
-football-event-mlops/
+ml_pipeline_event_mlops/
 ├── README.md
 ├── notebook/football_event_pipeline.ipynb   # acquisition, EDA, preprocessing, training, evaluation, export
 ├── src/
@@ -159,7 +181,9 @@ football-event-mlops/
 ├── locust/                # locustfile.py, test images, results/
 ├── nginx/nginx.conf       # load balancer
 ├── Dockerfile
-└── docker-compose.yml
+├── docker-compose.yml
+├── render.yaml            # Render deployment
+└── deploy/huggingface/    # alternative: Hugging Face Spaces
 ```
 
 ## API reference
