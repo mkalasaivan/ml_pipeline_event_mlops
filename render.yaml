@@ -1,0 +1,19 @@
+# Render Blueprint: one web service serving the dashboard UI (/), the REST API and Swagger docs (/docs).
+services:
+  - type: web
+    name: football-event-recognition
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Free instances have 512 MB RAM: retrain the head on backbone features one image at a time.
+      - key: FINE_TUNE_LAYERS
+        value: "0"
+      - key: RETRAIN_BATCH
+        value: "1"
+      - key: INFER_CONCURRENCY
+        value: "1"
+      - key: MALLOC_ARENA_MAX
+        value: "2"
