@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+data/raw/
+data/uploads/
+*.db
+.ipynb_checkpoints/
+data/demo/
+data/train/
+data/test/
+models/previous/
+models/tmp_*

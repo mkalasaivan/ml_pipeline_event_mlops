@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Football Event Recognition</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f4f4f2; --surface:#fcfcfb; --border:#e2e1dc;
+  --text:#0b0b0b; --text-2:#52514e; --muted:#7a7974;
+  --accent:#2a78d6; --accent-2:#eb6834; --grid:#e8e7e2;
+  --good:#0a7d32; --bad:#c62d2d; --warn:#a86a00;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121211; --surface:#1a1a19; --border:#2e2e2c;
+    --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e86;
+    --accent:#3987e5; --accent-2:#d95926; --grid:#2a2a28;
+    --good:#3fbf6a; --bad:#ef6b6b; --warn:#e0a53a;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121211; --surface:#1a1a19; --border:#2e2e2c;
+  --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e86;
+  --accent:#3987e5; --accent-2:#d95926; --grid:#2a2a28;
+  --good:#3fbf6a; --bad:#ef6b6b; --warn:#e0a53a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px}
+header .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+h1{font-size:20px;margin:0}
+h2{font-size:16px;margin:0 0 4px}
+h3{font-size:14px;margin:0 0 6px;color:var(--text-2);font-weight:600}
+.wrap{max-width:1200px;margin:0 auto}
+main{padding:16px}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+nav button{background:none;border:1px solid var(--border);color:var(--text-2);border-radius:999px;padding:6px 14px;cursor:pointer;font:inherit}
+nav button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;min-width:0}
+.tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.tile .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tile .v{font-size:24px;font-weight:650;font-variant-numeric:tabular-nums}
+.tile .s{font-size:12px;color:var(--text-2)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--good)} .dot.bad{background:var(--bad)}
+.note{font-size:13.5px;color:var(--text-2);margin:8px 0 0}
+.chart{position:relative;height:240px}
+.chart.tall{height:300px}
+section[hidden]{display:none}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+th{color:var(--muted);font-weight:600}
+.scroll{overflow-x:auto}
+label{display:block;font-size:13px;color:var(--text-2);margin:10px 0 4px}
+input[type=file],select{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px}
+.btn{margin-top:12px;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 16px;font:inherit;font-weight:600;cursor:pointer}
+.btn.big{font-size:16px;padding:12px 22px}
+.btn:disabled{opacity:.5;cursor:default}
+.preview{max-width:100%;max-height:260px;border-radius:8px;display:block;margin-top:10px}
+.result-class{font-size:26px;font-weight:700;margin:6px 0 0}
+.msg{margin-top:10px;font-size:14px}
+.msg.err{color:var(--bad)} .msg.ok{color:var(--good)}
+.status{font-weight:650}
+.status.completed{color:var(--good)} .status.failed{color:var(--bad)} .status.rejected{color:var(--warn)} .status.running{color:var(--accent)}
+img.fig{width:100%;border-radius:8px;background:#fff}
+.legend{display:flex;gap:14px;font-size:12.5px;color:var(--text-2);margin-bottom:6px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div>
+      <h1>Football Event Recognition</h1>
+      <div class="pill"><span class="dot" id="hdot"></span><span id="hstatus">connecting…</span></div>
+    </div>
+    <nav id="tabs">
+      <button data-tab="overview" class="active">Overview</button>
+      <button data-tab="insights">Data insights</button>
+      <button data-tab="predict">Predict</button>
+      <button data-tab="retrain">Upload &amp; retrain</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ OVERVIEW ============ -->
+<section id="overview">
+  <div class="tiles">
+    <div class="tile"><div class="k">Model uptime</div><div class="v" id="t-uptime">–</div><div class="s" id="t-container"></div></div>
+    <div class="tile"><div class="k">Model version</div><div class="v" id="t-version">–</div><div class="s" id="t-updated"></div></div>
+    <div class="tile"><div class="k">Test accuracy</div><div class="v" id="t-acc">–</div><div class="s" id="t-acc-s"></div></div>
+    <div class="tile"><div class="k">Macro F1</div><div class="v" id="t-f1">–</div><div class="s">held-out test set</div></div>
+    <div class="tile"><div class="k">Predictions served</div><div class="v" id="t-preds">–</div><div class="s" id="t-lat"></div></div>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <h2>Evaluation metrics</h2>
+      <p class="note" style="margin-top:0">MobileNetV2 transfer learning. Test = held-out 15% of the main dataset; External = a separately collected dataset.</p>
+      <div class="scroll"><table id="metrics"></table></div>
+    </div>
+    <div class="card">
+      <h2>Retraining: accuracy before vs after</h2>
+      <div class="legend"><span style="--c:var(--accent)">current model before run</span><span style="--c:var(--accent-2)">retrained model</span></div>
+      <div class="chart"><canvas id="c-history"></canvas></div>
+      <p class="note">Both models are scored on the same held-out 20% of the newly uploaded images, so the bars are directly comparable. The retrained model is promoted only if it is at least as accurate.</p>
+    </div>
+    <div class="card"><h2>Confusion matrix: test set</h2><img class="fig" src="/figures/cm_test_set.png" alt="Confusion matrix on the test set"></div>
+    <div class="card"><h2>Learning curves</h2><img class="fig" src="/figures/learning_curves.png" alt="Training and validation loss and accuracy"></div>
+  </div>
+</section>
+
+<!-- ============ INSIGHTS ============ -->
+<section id="insights" hidden>
+  <div class="grid">
+    <div class="card">
+      <h2>Feature 1: class balance</h2>
+      <div class="chart"><canvas id="c-classes"></canvas></div>
+      <p class="note" id="n-classes"></p>
+    </div>
+    <div class="card">
+      <h2>Feature 2: image resolution</h2>
+      <div class="chart"><canvas id="c-width"></canvas></div>
+      <p class="note" id="n-width"></p>
+    </div>
+    <div class="card">
+      <h2>Feature 3: grass-green pixel share</h2>
+      <div class="chart"><canvas id="c-green"></canvas></div>
+      <p class="note" id="n-green"></p>
+    </div>
+    <div class="card">
+      <h2>Feature 4: card colours (red vs yellow pixel share)</h2>
+      <div class="legend"><span style="--c:var(--accent)">red share</span><span style="--c:var(--accent-2)">yellow share</span></div>
+      <div class="chart"><canvas id="c-cards"></canvas></div>
+      <p class="note" id="n-cards"></p>
+    </div>
+    <div class="card">
+      <h2>Live: what the model has been predicting</h2>
+      <div class="chart"><canvas id="c-preds"></canvas></div>
+      <p class="note">Counts of predictions served by the API, by predicted class.</p>
+    </div>
+    <div class="card"><h2>Sample images per class</h2><img class="fig" src="/figures/samples.png" alt="Sample images for each class"></div>
+  </div>
+</section>
+
+<!-- ============ PREDICT ============ -->
+<section id="predict" hidden>
+  <div class="grid">
+    <div class="card">
+      <h2>Predict a single image</h2>
+      <label for="p-file">Football broadcast image (JPEG / PNG / BMP)</label>
+      <input type="file" id="p-file" accept="image/jpeg,image/png,image/bmp">
+      <img id="p-preview" class="preview" hidden alt="Selected image">
+      <button class="btn" id="p-btn" disabled>Predict</button>
+      <div class="msg" id="p-msg"></div>
+    </div>
+    <div class="card">
+      <h2>Result</h2>
+      <div id="p-result" class="note">Upload an image to see the predicted event.</div>
+      <div class="chart" id="p-chart-wrap" hidden><canvas id="c-proba"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RETRAIN ============ -->
+<section id="retrain" hidden>
+  <div class="grid">
+    <div class="card">
+      <h2>1. Upload new training data</h2>
+      <p class="note" style="margin-top:0">Either several images and one label, or a .zip with one folder per class (our class names or the Soccer Events TestSet folder names, e.g. <code>Corner/</code>, <code>Red-Cards/</code>). Images are stored on disk and recorded in the database.</p>
+      <label for="u-files">Images or zip file(s)</label>
+      <input type="file" id="u-files" multiple accept="image/jpeg,image/png,image/bmp,.zip">
+      <label for="u-label">Label (only for loose images)</label>
+      <select id="u-label"><option value="">— from zip folders —</option></select>
+      <button class="btn" id="u-btn">Upload</button>
+      <div class="msg" id="u-msg"></div>
+    </div>
+    <div class="card">
+      <h2>Uploaded data in the database</h2>
+      <div class="legend"><span style="--c:var(--accent)">waiting for retraining</span><span style="--c:var(--accent-2)">already used</span></div>
+      <div class="chart"><canvas id="c-uploads"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>2. Retrain the model</h2>
+      <p class="note" style="margin-top:0">Fine-tunes the <b>current saved model</b> on the new uploads (plus earlier uploads), holds out 20% of the new images, and promotes the new model only if it is at least as accurate as the old one on them.</p>
+      <button class="btn big" id="r-btn">Retrain model</button>
+      <div class="msg" id="r-msg"></div>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <h2>Retraining runs</h2>
+      <div class="scroll"><table id="runs"></table></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const charts = {};
+let classes = [];
+
+// ---------- tabs
+$('#tabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('main section').forEach(s => s.hidden = s.id !== b.dataset.tab);
+});
+
+// ---------- helpers
+const fmtDur = s => { s = Math.floor(s); const d = Math.floor(s/86400), h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m ${s%60}s`; };
+const pct = v => v == null ? '–' : (v*100).toFixed(1) + '%';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function baseOpts(extra = {}) {
+  const text = css('--text-2'), grid = css('--grid');
+  return Object.assign({
+    responsive: true, maintainAspectRatio: false, animation: false,
+    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+    scales: {
+      x: { ticks: { color: text, maxRotation: 40, autoSkip: false }, grid: { display: false } },
+      y: { ticks: { color: text }, grid: { color: grid }, beginAtZero: true }
+    },
+    datasets: { bar: { borderRadius: 4, borderSkipped: 'start', maxBarThickness: 38 } }
+  }, extra);
+}
+function draw(id, type, labels, datasets, opts) {
+  if (charts[id]) { charts[id].data.labels = labels; charts[id].data.datasets = datasets; charts[id].update(); return; }
+  charts[id] = new Chart($('#' + id), { type, data: { labels, datasets }, options: opts || baseOpts() });
+}
+const bar = (label, data, color) => ({ label, data, backgroundColor: color || css('--accent'), borderColor: css('--surface'), borderWidth: 0 });
+
+// ---------- health (uptime)
+async function health() {
+  try {
+    const h = await (await fetch('/health')).json();
+    $('#hdot').className = 'dot ' + (h.status === 'ok' ? 'ok' : 'bad');
+    $('#hstatus').textContent = `${h.status === 'ok' ? 'Model online' : 'No model loaded'} · up ${fmtDur(h.uptime_seconds)} · container ${h.container}`;
+    $('#t-uptime').textContent = fmtDur(h.uptime_seconds);
+    $('#t-container').textContent = `since ${h.started_at} · ${h.container}`;
+    $('#t-version').textContent = h.model_version;
+    $('#t-updated').textContent = h.model_updated_at ? 'saved ' + h.model_updated_at : '';
+  } catch { $('#hdot').className = 'dot bad'; $('#hstatus').textContent = 'API unreachable'; }
+}
+
+// ---------- stats
+async function stats() {
+  const s = await (await fetch('/stats')).json();
+  const m = s.model || {}, t = m.test_metrics || {}, x = m.external_metrics || {};
+  $('#t-acc').textContent = pct(t.accuracy);
+  $('#t-acc-s').textContent = `v1, Colab test set · external set ${pct(x.accuracy)}`;
+  $('#t-f1').textContent = t.f1_macro?.toFixed(3) ?? '–';
+  $('#t-preds').textContent = s.predictions.total;
+  $('#t-lat').textContent = s.predictions.avg_latency_ms ? `avg ${s.predictions.avg_latency_ms.toFixed(0)} ms / image` : '';
+
+  const keys = Object.keys(t);
+  $('#metrics').innerHTML = '<tr><th>Metric</th><th>Test</th><th>External</th></tr>' +
+    keys.map(k => `<tr><td>${esc(k)}</td><td>${t[k]?.toFixed(4)}</td><td>${x[k]?.toFixed(4) ?? '–'}</td></tr>`).join('');
+
+  const done = (s.runs || []).filter(r => r.new_accuracy != null).reverse();
+  draw('c-history', 'bar', done.map(r => `run ${r.id} → ${r.status === 'completed' ? r.model_version : 'kept'}`),
+       [bar('before', done.map(r => r.old_accuracy)), bar('after', done.map(r => r.new_accuracy), css('--accent-2'))],
+       baseOpts({ scales: { x: { ticks: { color: css('--text-2') }, grid: { display: false } },
+                            y: { min: 0, max: 1, ticks: { color: css('--text-2') }, grid: { color: css('--grid') } } } }));
+
+  // EDA features
+  const eda = s.eda || [];
+  if (eda.length) {
+    const L = eda.map(e => e.label);
+    draw('c-classes', 'bar', L, [bar('images', eda.map(e => e.images))]);
+    const mx = eda.reduce((a, b) => b.images > a.images ? b : a), mn = eda.reduce((a, b) => b.images < a.images ? b : a);
+    $('#n-classes').textContent = `Fairly balanced: the largest class (${mx.label}, ${mx.images}) is ${(mx.images/mn.images).toFixed(2)}× the smallest (${mn.label}, ${mn.images}). Red cards are the rarest, as in real matches. Class weights during training stop the rarer events being under-predicted.`;
+
+    draw('c-width', 'bar', L, [bar('median width (px)', eda.map(e => e.median_width))]);
+    $('#n-width').textContent = `Median widths range from ${Math.min(...eda.map(e=>e.median_width))} to ${Math.max(...eda.map(e=>e.median_width))} px (substitution images are the smallest), and most images are wide (median aspect ratio ≈ ${(eda.reduce((a,e)=>a+e.median_aspect,0)/eda.length).toFixed(2)}). Because sizes vary so much, every image is resized to 224×224, MobileNetV2's input size.`;
+
+    draw('c-green', 'bar', L, [bar('grass-green share', eda.map(e => e.green_ratio))]);
+    const g = Object.fromEntries(eda.map(e => [e.label, e.green_ratio]));
+    $('#n-green').textContent = `Set pieces are filmed wide, so the pitch fills the frame: corners ${pct(g.Corner_Kick)} and penalties ${pct(g.Penalty_kick)} green pixels. Card images are close-ups of the referee or player: red ${pct(g.Red_Card)}, yellow ${pct(g.Yellow_Card)}. This is the strongest single visual cue separating wide shots from close-ups.`;
+
+    draw('c-cards', 'bar', L, [bar('red share', eda.map(e => e.red_ratio)), bar('yellow share', eda.map(e => e.yellow_ratio), css('--accent-2'))]);
+    const r = Object.fromEntries(eda.map(e => [e.label, e]));
+    $('#n-cards').textContent = `Red-card images have the highest red share (${pct(r.Red_Card.red_ratio)}) and yellow-card images the highest yellow share (${pct(r.Yellow_Card.yellow_ratio)}), the colour of the card itself. The differences are small because kits and advertising boards share these colours, so colour alone can't classify; the CNN also uses shape and context (a raised arm holding a card).`;
+  }
+  const pc = s.predictions.by_class || [];
+  draw('c-preds', 'bar', pc.map(p => p.predicted), [bar('predictions', pc.map(p => p.n))]);
+
+  // uploads
+  const up = s.uploads || [];
+  draw('c-uploads', 'bar', up.map(u => u.label),
+       [bar('waiting', up.map(u => u.pending)), bar('used', up.map(u => u.total - u.pending), css('--accent-2'))],
+       baseOpts({ scales: { x: { stacked: true, ticks: { color: css('--text-2') }, grid: { display: false } },
+                            y: { stacked: true, beginAtZero: true, ticks: { color: css('--text-2') }, grid: { color: css('--grid') } } } }));
+  renderRuns(s.runs || []);
+}
+
+function renderRuns(runs) {
+  const d = t => t ? new Date(t * 1000).toLocaleString() : '–';
+  $('#runs').innerHTML = '<tr><th>#</th><th>Status</th><th>Started</th><th>Duration</th><th>New images</th><th>Old acc.</th><th>New acc.</th><th>Version</th><th>Notes</th></tr>' +
+    (runs.length ? runs.map(r => {
+      let note = r.message || '';
+      if (note.startsWith('{')) { const j = JSON.parse(note); note = `trained on ${j.n_train}, evaluated on ${j.n_eval}, ${j.epochs} epochs; F1 ${j.before.f1_macro} → ${j.after.f1_macro}`; }
+      return `<tr><td>${r.id}</td><td class="status ${r.status}">${r.status}</td><td>${d(r.started_at)}</td><td>${r.finished_at ? fmtDur(r.finished_at - r.started_at) : '…'}</td><td>${r.n_images ?? '–'}</td><td>${pct(r.old_accuracy)}</td><td>${pct(r.new_accuracy)}</td><td>${r.model_version ?? '–'}</td><td style="white-space:normal">${esc(note)}</td></tr>`;
+    }).join('') : '<tr><td colspan="9">No retraining runs yet.</td></tr>');
+}
+
+// ---------- predict
+$('#p-file').addEventListener('change', () => {
+  const f = $('#p-file').files[0]; $('#p-btn').disabled = !f;
+  if (f) { $('#p-preview').src = URL.createObjectURL(f); $('#p-preview').hidden = false; }
+});
+$('#p-btn').addEventListener('click', async () => {
+  const f = $('#p-file').files[0]; if (!f) return;
+  $('#p-btn').disabled = true; $('#p-msg').className = 'msg'; $('#p-msg').textContent = 'Predicting…';
+  const fd = new FormData(); fd.append('file', f);
+  try {
+    const r = await fetch('/predict', { method: 'POST', body: fd }); const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || r.statusText);
+    $('#p-msg').textContent = '';
+    $('#p-result').innerHTML = `<div class="result-class">${esc(j.predicted_class.replace('_', ' '))}</div>
+      <div>${pct(j.confidence)} confidence · ${j.latency_ms} ms · model ${esc(j.model_version)} · container ${esc(j.container)}</div>
+      <div class="note">Image features: grass-green ${pct(j.features.green_ratio)}, red ${pct(j.features.red_ratio)}, yellow ${pct(j.features.yellow_ratio)}</div>`;
+    $('#p-chart-wrap').hidden = false;
+    const P = Object.entries(j.probabilities).sort((a, b) => b[1] - a[1]);
+    draw('c-proba', 'bar', P.map(p => p[0]), [bar('probability', P.map(p => p[1]))],
+         baseOpts({ indexAxis: 'y', scales: { x: { min: 0, max: 1, ticks: { color: css('--text-2') }, grid: { color: css('--grid') } },
+                                              y: { ticks: { color: css('--text-2') }, grid: { display: false } } } }));
+    stats();
+  } catch (e) { $('#p-msg').className = 'msg err'; $('#p-msg').textContent = e.message; }
+  $('#p-btn').disabled = false;
+});
+
+// ---------- upload
+$('#u-btn').addEventListener('click', async () => {
+  const files = $('#u-files').files; if (!files.length) return;
+  const fd = new FormData(); [...files].forEach(f => fd.append('files', f));
+  if ($('#u-label').value) fd.append('label', $('#u-label').value);
+  $('#u-btn').disabled = true; $('#u-msg').className = 'msg'; $('#u-msg').textContent = `Uploading ${files.length} file(s)…`;
+  try {
+    const r = await fetch('/upload', { method: 'POST', body: fd }); const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || r.statusText);
+    $('#u-msg').className = 'msg ok';
+    $('#u-msg').textContent = `Saved ${j.saved} image(s)` + (j.skipped ? `, skipped ${j.skipped} (not a readable image or unknown class)` : '') +
+      ': ' + Object.entries(j.per_class).map(([k, v]) => `${k} ${v}`).join(', ');
+    stats();
+  } catch (e) { $('#u-msg').className = 'msg err'; $('#u-msg').textContent = e.message; }
+  $('#u-btn').disabled = false;
+});
+
+// ---------- retrain
+let poll;
+async function pollStatus() {
+  const r = await (await fetch('/retrain/status')).json();
+  const running = r.status === 'running';
+  $('#r-btn').disabled = running;
+  if (running) { $('#r-msg').className = 'msg'; $('#r-msg').textContent = `Run #${r.id} in progress… (${fmtDur(Date.now()/1000 - r.started_at)})`; }
+  else if (r.id) {
+    $('#r-msg').className = 'msg ' + (r.status === 'failed' ? 'err' : 'ok');
+    $('#r-msg').textContent = r.status === 'completed' ? `Run #${r.id} finished: accuracy ${pct(r.old_accuracy)} → ${pct(r.new_accuracy)}. New model ${r.model_version} is live.`
+      : r.status === 'rejected' ? `Run #${r.id} finished, but the new model (${pct(r.new_accuracy)}) was not better than the current one (${pct(r.old_accuracy)}), so it was kept.`
+      : r.status === 'failed' ? `Run #${r.id} failed: ${r.message}` : '';
+    if (poll) { clearInterval(poll); poll = null; stats(); health(); }
+  }
+  return running;
+}
+$('#r-btn').addEventListener('click', async () => {
+  $('#r-btn').disabled = true;
+  const r = await fetch('/retrain', { method: 'POST' }); const j = await r.json();
+  if (!r.ok) { $('#r-msg').className = 'msg err'; $('#r-msg').textContent = j.detail; $('#r-btn').disabled = false; return; }
+  stats(); pollStatus(); poll = setInterval(pollStatus, 3000);
+});
+
+// ---------- init
+(async () => {
+  classes = await (await fetch('/classes')).json();
+  $('#u-label').insertAdjacentHTML('beforeend', classes.map(c => `<option>${esc(c)}</option>`).join(''));
+  await health(); await stats();
+  if (await pollStatus()) poll = setInterval(pollStatus, 3000);
+  setInterval(health, 5000);
+})();
+</script>
+</body>
+</html>

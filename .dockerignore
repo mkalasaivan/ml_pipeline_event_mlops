@@ -1,0 +1,8 @@
+.git
+notebook
+data
+locust
+**/__pycache__
+models/previous
+models/tmp_*
+*.db

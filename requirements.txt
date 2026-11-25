@@ -1,0 +1,10 @@
+# Pinned to the versions the model was trained with in Colab (see models/model_meta.json)
+tensorflow-cpu==2.21.0
+keras==3.13.2
+numpy<2.3
+pillow>=10.0
+scikit-learn>=1.5
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+h5py>=3.11

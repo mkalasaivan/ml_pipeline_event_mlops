@@ -1,0 +1,47 @@
+{
+  "class_names": [
+    "Corner_Kick",
+    "Free_Kick",
+    "Penalty_kick",
+    "Red_Card",
+    "Yellow_Card",
+    "substitute",
+    "tackle"
+  ],
+  "img_size": 224,
+  "tensorflow_version": "2.21.0",
+  "keras_version": "3.13.2",
+  "trained_at": "2026-11-24 17:01:00",
+  "n_train": 4184,
+  "n_val": 897,
+  "n_test": 897,
+  "test_metrics": {
+    "accuracy": 0.8673,
+    "loss (log loss)": 0.4107,
+    "precision_macro": 0.8637,
+    "recall_macro": 0.8624,
+    "f1_macro": 0.8624,
+    "f1_weighted": 0.8681,
+    "roc_auc_ovr_macro": 0.9794,
+    "cohen_kappa": 0.8449
+  },
+  "external_metrics": {
+    "accuracy": 0.6157,
+    "loss (log loss)": 1.3305,
+    "precision_macro": 0.6848,
+    "recall_macro": 0.6157,
+    "f1_macro": 0.6154,
+    "f1_weighted": 0.6154,
+    "roc_auc_ovr_macro": 0.921,
+    "cohen_kappa": 0.5517
+  },
+  "class_counts": {
+    "Corner_Kick": 856,
+    "Free_Kick": 729,
+    "Penalty_kick": 901,
+    "Red_Card": 707,
+    "Yellow_Card": 852,
+    "substitute": 974,
+    "tackle": 959
+  }
+}
