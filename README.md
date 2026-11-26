@@ -4,7 +4,8 @@
 
 | | |
 |---|---|
-| Video demo (camera on) | **TODO: YouTube link** |
+| Video demo (camera on), part 1: full walkthrough | https://www.loom.com/share/a0581f24725c4820a389ece6dcb82e18 |
+| Video demo, part 2: upload, retraining and results | https://www.loom.com/share/69797d43320646b1990d617fd378aff7 |
 | Live app (dashboard UI) | https://football-event-recognition.onrender.com |
 | Live API docs (Swagger) | https://football-event-recognition.onrender.com/docs (ReDoc: `/redoc`, OpenAPI JSON: `/openapi.json`) |
 | Notebook | [`notebook/football_event_pipeline.ipynb`](notebook/football_event_pipeline.ipynb) |
