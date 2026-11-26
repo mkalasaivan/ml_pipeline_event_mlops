@@ -136,9 +136,11 @@ pip install -r requirements-locust.txt
 locust -f locust/locustfile.py --host http://localhost:8080          # web UI at http://localhost:8089
 ```
 
-### Retraining demo data
-Download the *Soccer Events TestSet* from Kaggle, zip a few class folders (e.g. `Corner/`, `Red-Cards/`, `Tackle/`),
-and upload the zip on the *Upload & retrain* tab. Folder names from that dataset are mapped to our classes automatically.
+### Demo data in the repo
+- `data/test/`: 20 sample images (2–3 per class, folder = true label). They are not in the training data, and the deployed model classifies all 20 correctly.
+- `data/train/`: 140 images (20 per class) from the external dataset, used to demonstrate retraining.
+  Zip the folder (`cd data/train && zip -r ../retrain_batch.zip .`), upload the zip on the *Upload & retrain* tab, then press **Retrain model**.
+  Folder names from the original Kaggle dataset (e.g. `Red-Cards/`, `To-Subtitue/`) are also mapped to our classes automatically.
 
 ## Deployment (Render)
 
@@ -177,7 +179,10 @@ ml_pipeline_event_mlops/
 │   ├── main.py            # FastAPI endpoints
 │   └── static/index.html  # dashboard UI
 ├── models/                # football_event_model.keras / .h5, model_meta.json, eda_stats.json, figures/
-├── data/                  # uploads/ and the SQLite DB (created at runtime)
+├── data/
+│   ├── train/             # retraining demo batch (140 images, one folder per class)
+│   ├── test/              # sample images for prediction (folder = true label)
+│   └── uploads/, *.db     # created at runtime: uploaded images and the SQLite database
 ├── locust/                # locustfile.py, test images, results/
 ├── nginx/nginx.conf       # load balancer
 ├── Dockerfile

@@ -7,7 +7,5 @@ data/uploads/
 *.db
 .ipynb_checkpoints/
 data/demo/
-data/train/
-data/test/
 models/previous/
 models/tmp_*
