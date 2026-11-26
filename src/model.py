@@ -19,6 +19,7 @@ RETRAIN_BATCH = int(os.getenv("RETRAIN_BATCH", "32"))   # lower on small-memory 
 FINE_TUNE_LAYERS = int(os.getenv("FINE_TUNE_LAYERS", "40"))  # notebook phase 2; 0 = head only (low-memory hosts)
 
 _lock = threading.Lock()
+RETRAINING = threading.Event()        # set while a retraining run is active in this process
 _model = None
 _loaded_mtime = None
 
@@ -181,6 +182,7 @@ def retrain(run_id: int):
     4. Compare old vs new on the held-out uploads; promote the new model only if it is at least as good.
     """
     tf = _tf()
+    RETRAINING.set()
     try:
         classes = class_names()
         idx = {c: i for i, c in enumerate(classes)}
@@ -221,6 +223,10 @@ def retrain(run_id: int):
     except Exception as e:  # noqa: BLE001 - record any failure on the run
         db.finish_run(run_id, "failed", message=f"{type(e).__name__}: {e}")
         raise
+    finally:
+        import gc
+        gc.collect()                       # release retraining buffers before serving resumes
+        RETRAINING.clear()
 
 
 def _save(model, meta, version, run_id, before, after, n_train, n_eval):

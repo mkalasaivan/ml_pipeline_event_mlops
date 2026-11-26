@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src import database as db
 from src.config import EDA_PATH, MODEL_PATH, MODELS_DIR, UPLOAD_DIR, class_names, load_meta
-from src.model import get_model, model_version, start_retraining
+from src.model import FINE_TUNE_LAYERS, RETRAINING, get_model, model_version, start_retraining
 from src.prediction import predict_bytes
 from src.preprocessing import InvalidImage, image_features, is_image_name, validate_image_bytes
 
@@ -93,6 +93,10 @@ def figure(name: str):
 # ------------------------------------------------------------------ prediction
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
+    # Low-memory hosts (512 MB) can't hold a prediction and a retraining run at the same time.
+    if FINE_TUNE_LAYERS == 0 and RETRAINING.is_set():
+        raise HTTPException(503, "The model is retraining. Predictions resume automatically when it finishes "
+                                 "(check the Upload & retrain tab).")
     data = await file.read()
     try:
         validate_image_bytes(data)
